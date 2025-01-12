@@ -1,0 +1,106 @@
+.Modal {
+  content: '';
+  position: fixed;
+  inset: 0;
+  width: max-content;
+  max-width: calc(100vw - 100px);
+  height: max-content;
+  max-height: calc(100vh - 100px);
+
+  margin: auto;
+  padding: .2em .5em;
+  background-color: var(--color-bg);
+  box-shadow: 2px 2px 10px -5px;
+  border-radius: .45em;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: auto;
+
+  color: var(--color-main);
+
+  &:not([open]) {
+    display: none;
+  }
+
+  &::backdrop {
+    background-color: rgba(20, 0, 0, 20%);
+  }
+
+  &::-webkit-scrollbar {
+    width: var(--scroll-bar-size);
+    height: var(--scroll-bar-size);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-em) 75%, var(--color-main));
+  }
+
+  // 縮小無しをデフォルトに設定。
+  > * {
+    flex-shrink: 0;
+  }
+}
+
+.Title {
+  content: '';
+  position: sticky;
+  top: 0;
+
+  border-bottom: solid 1px var(--color-main);
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h1 {
+    display: flex;
+    align-items: center;
+
+    font-weight: bold;
+  }
+}
+
+.TitleIcon {
+  margin-right: 8px;
+
+  display: flex;
+  align-items: center;
+
+  &[data-clickable="true"] {
+    cursor: pointer;
+  }
+}
+
+.CloseButton {
+  --size: 0.8em;
+  cursor: pointer;
+  content: '';
+  width: var(--size);
+  aspect-ratio: 1 / 1;
+
+  margin-left: .25em;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: var(--size);
+
+    background-color: var(--color-main);
+  }
+
+  &::before {
+    transform: translate(-50%,-50%) rotate(45deg);
+  }
+
+  &::after {
+    transform: translate(-50%,-50%) rotate(-45deg);
+  }
+
+  &:focus {
+    outline: dashed 1px currentcolor;
+  }
+}

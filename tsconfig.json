@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    // Where compiled files go
+    "outDir": "dist",
+
+    // Root directory of your source
+    "rootDir": "src",
+
+    // Target language level
+    "target": "ES2020",
+
+    // How modules are resolved
+    "module": "ES2020",
+    "moduleResolution": "node",
+
+    // Emit ES module interop statements
+    "esModuleInterop": true,
+
+    // Generate declaration files to allow your library to be used with TypeScript
+    "declaration": true,
+    "declarationMap": true,
+
+    // Include .js in case you have some JS helpers
+    "allowJs": false,
+
+    // Strict type checking
+    "strict": true,
+
+    // Allows importing JSON
+    "resolveJsonModule": true,
+
+    // Use default library definitions
+    "lib": ["ES2020", "DOM"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
