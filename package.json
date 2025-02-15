@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --build --clean && tsc --build"
   },
   "keywords": [
     "hyori",
@@ -16,6 +17,12 @@
   "author": "ryotarofr",
   "contributors": [
     "ryotarofr"
+  ],
+  "type": "module",
+  "exports": "./src/index/index.js",
+  "files": [
+    "src/",
+    "index.ts"
   ],
   "license": "ISC",
   "description": "",
@@ -44,12 +51,7 @@
     "sass": "^1.83.1",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3",
-    "vite": "^6.0.7",
-    "vite-plugin-node-polyfills": "^0.22.0",
-    "vite-plugin-svgr": "^4.3.0",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^2.1.8"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
     "content-disposition": "^0.5.4",

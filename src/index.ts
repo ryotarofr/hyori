@@ -2,12 +2,12 @@ import useSWR from "swr";
 import { BareFetcher, SWRConfiguration, useSWRConfig } from "swr/_internal";
 import useSWRMutation, { SWRMutationConfiguration } from "swr/mutation";
 
-import { environment } from "../_internal/environments/environment";
-import { getFileFromFetchResponse } from "../_internal/utils/getFileFromFetchResponse";
-import { EmptyObject } from "../_internal/types/EmptyObject";
-import { Falsy } from "../_internal/types/Falsy";
-import { TemplateLiteralPlaceholder } from "../_internal/types/TemplateLiteralPlaceholder";
-import { ToRecord } from "../_internal/types/ToRecord";
+import { environment } from "./_internal/environments/environment";
+import { getFileFromFetchResponse } from "./_internal/utils/getFileFromFetchResponse";
+import { EmptyObject } from "./_internal/types/EmptyObject";
+import { Falsy } from "./_internal/types/Falsy";
+import { TemplateLiteralPlaceholder } from "./_internal/types/TemplateLiteralPlaceholder";
+import { ToRecord } from "./_internal/types/ToRecord";
 
 
 /**

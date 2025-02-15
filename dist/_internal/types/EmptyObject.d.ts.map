@@ -1,0 +1,1 @@
+{"version":3,"file":"EmptyObject.d.ts","sourceRoot":"","sources":["../../../src/_internal/types/EmptyObject.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,WAAW,GAAG,MAAM,CAAC,WAAW,EAAE,KAAK,CAAC,CAAC;AACrD,eAAO,MAAM,WAAW;gBACZ,WAAW;aACZ,OAAO,KAAG,EAAE,IAAI,WAAW;CAErC,CAAC"}
