@@ -4,14 +4,79 @@ import useSWRMutation, { SWRMutationConfiguration } from "swr/mutation";
 
 import { environment } from "../_internal/environments/environment";
 import { useLoadingBoundary } from "../_internal/utils/context/LoadingBoundaryContext";
-import { SnwErrorMapper, useSnwErrorHandler } from "@/fn/context/SnwErrorHandlerContext";
+// import { SnwErrorMapper, useSnwErrorHandler } from "@/fn/context/SnwErrorHandlerContext";
 import { getFileFromFetchResponse } from "../_internal/utils/getFileFromFetchResponse";
-import { components, paths } from "../schema.gen";
+// import { components, paths } from "../schema.gen";
 import { EmptyObject } from "../_internal/types/EmptyObject";
 import { Falsy } from "../_internal/types/Falsy";
 import { TemplateLiteralPlaceholder } from "../_internal/types/TemplateLiteralPlaceholder";
 import { ToRecord } from "../_internal/types/ToRecord";
 
+
+/**
+ * API スキーマ情報（components/paths）についてはユーザ側で実装
+ */
+export interface ApiSchema {
+  components: Record<string, any>;
+  paths: Record<string, any>;
+}
+
+export const defaultApiSchema: ApiSchema = {
+  components: {},
+  paths: {},
+};
+
+// 内部で利用するグローバルな API スキーマ（ユーザ設定により上書き可能）
+let globalApiSchema: ApiSchema = defaultApiSchema;
+
+/**
+ * エラーメッセージの整形関数の型（ユーザ側で実装してください）
+ */
+export type SnwErrorMapper = (error: any) => string;
+
+/**
+ * ローディングインジケータ／エラーハンドリングの実装はユーザ側で用意してください。
+ * ここではデフォルト実装として「何もしない」関数を定義しています。
+ */
+type LoadingBoundaryType = () => { track: <T>(promise: Promise<T>) => Promise<T> };
+type ErrorHandlerType = () => {
+  alertSnwError: (mapper?: SnwErrorMapper) => (error: unknown, config: { swrKey: unknown }) => void;
+};
+
+const defaultLoadingBoundary: LoadingBoundaryType = () => ({ track: (p) => p });
+const defaultErrorHandler: ErrorHandlerType = () => ({ alertSnwError: () => () => {} });
+
+let _useLoadingBoundary: LoadingBoundaryType = defaultLoadingBoundary;
+let _useErrorHandler: ErrorHandlerType = defaultErrorHandler;
+
+/**
+ * ライブラリ利用前に、以下の setter を呼び出してユーザ実装を注入。
+ *
+ * 例:
+ * ```ts
+ * import { setApiLibDeps } from "your-api-lib";
+ * import { components, paths } from "./schema.gen";
+ * import { useMyLoadingBoundary } from "./context/MyLoadingBoundary";
+ * import { useMyErrorHandler } from "./context/MyErrorHandler";
+ *
+ * setApiLibDeps({
+ *   apiSchema: { components, paths },
+ *   useLoadingBoundary: useMyLoadingBoundary,
+ *   useErrorHandler: useMyErrorHandler,
+ * });
+ * ```
+ */
+export const setApiLibDeps = (deps: {
+  useLoadingBoundary?: LoadingBoundaryType;
+  useErrorHandler?: ErrorHandlerType;
+  apiSchema?: ApiSchema;
+}) => {
+  if (deps.useLoadingBoundary) _useLoadingBoundary = deps.useLoadingBoundary;
+  if (deps.useErrorHandler) _useErrorHandler = deps.useErrorHandler;
+  if (deps.apiSchema) {
+    globalApiSchema = deps.apiSchema;
+  }
+};
 /**
  * Union型情報から nullable な部分を抽出する。
  */
@@ -73,13 +138,13 @@ type ResponseMapFromSchemaRespopnses<Responses> = {
 /**
  * schema.gen.ts から API が受送信するデータ型を取得するための wrapper。
  */
-export type ApiTypes<Key extends keyof components["schemas"]>
-  = components["schemas"][Key];
+export type ApiTypes<Key extends keyof ApiSchema["components"]> =
+  ApiSchema["components"][Key];
 
 export type ApiType<
-  Url extends keyof paths,
-  Method extends keyof GetNested<paths, [Url]>,
-> = GetNested<paths, [Url, Method]>;
+  Url extends keyof ApiSchema["paths"],
+  Method extends keyof GetNested<ApiSchema["paths"], [Url]>
+> = GetNested<ApiSchema["paths"], [Url, Method]>;
 
 /**
  * object union (\{\} | \{\} | ...) に対して keyof を行う。
@@ -88,7 +153,7 @@ type KeyOfObjectUnion<T> = T extends { [Key in PropertyKey]: unknown } ? keyof T
 /**
  * schema.gen.ts で登場する http method を抽出したもの。
  */
-type HttpMethod = KeyOfObjectUnion<paths[keyof paths]>;
+type HttpMethod = KeyOfObjectUnion<ApiSchema["paths"][keyof ApiSchema["paths"]]>;
 
 /**
  * RESTful API base url.
@@ -240,10 +305,10 @@ type ToBeOptionalArgIfNotRequired<T> =
     : [T];
 
 export type ApiQuery<
-  Url extends keyof paths,
-  Method extends keyof paths[Url]
+  Url extends keyof ApiSchema["paths"],
+  Method extends keyof ApiSchema["paths"][Url]
 > = OmitOrNever<
-    GetNested<paths, [Url, Method, "parameters", "query"]>,
+    GetNested<ApiSchema["paths"], [Url, Method, "parameters", "query"]>,
     "request"
   >;
 
@@ -292,7 +357,7 @@ type ResponseAsFrom<T> =
  */
 export const useApiQuery
   = <
-    Url extends keyof QueryPaths,
+    Url extends Extract<keyof QueryPaths, string>,
     Placeholder extends GetNested<QueryPaths, [Url, "get", "parameters", "path"]>,
     Query extends ApiQuery<Url, "get">,
     ResponseMap extends ResponseMapFromSchemaRespopnses<
@@ -318,7 +383,7 @@ export const useApiQuery
     const [option] = options;
     const queryOption = QueryOption.fromArg<Query>(option?.query);
     const responseAs = option?.responseAs ?? "json";
-    const { alertSnwError } = useSnwErrorHandler();
+    const { alertSnwError } = _useErrorHandler();
     const { createFetch } = useCommonApiFetch({
       showIndicator: option?.showIndicator ?? !option?.suspense,
     });
@@ -356,34 +421,30 @@ export const useApiQuery
         });
       },
     );
-
-    return useSWR<Response, Error, FalsyOrFn<UseApiKeys>, SwrOptions>(keys, fetcher, {
-      // refreshInterval: 1000,
+    const swrConfig: SWRConfiguration<Response, Error, BareFetcher<Response>> = {
       refreshWhenHidden: false,
       refreshWhenOffline: false,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      // revalidateIfStale: true,
-      // suspense: true,
       onError: (err, key) => {
         const mapper = option?.snwErrorMapper;
         const error = err as unknown as ApiTypes<"Error">;
-        alertSnwError(mapper)(error, {
-          swrKey: key,
-        });
+        alertSnwError(mapper)(error, { swrKey: key });
       },
-      ...option as SwrOptions,
-    });
+      ...option,
+    };    
+
+    return useSWR<Response, Error, FalsyOrFn<UseApiKeys>>(keys, fetcher, swrConfig);;
   };
 
 type QueryMethod = Extract<HttpMethod, "get">;
 type QueryPaths =
   {
     [
-    Key in keyof paths as paths[Key] extends { [K in QueryMethod]?: unknown }
+    Key in keyof ApiSchema["paths"] as ApiSchema["paths"][Key] extends { [K in QueryMethod]?: unknown }
       ? Key
       : never
-    ]: paths[Key]
+    ]: ApiSchema["paths"][Key]
   };
 
 // type UseApiQueryFn<
@@ -440,12 +501,12 @@ type QueryPaths =
  */
 export const useApiMutation
   = <
-    Url extends keyof paths,
-    Method extends keyof GetNested<paths, [Url]>,
-    Placeholder extends GetNested<paths, [Url, Method, "parameters", "path"]>,
-    QueryBase extends GetNested<paths, [Url, Method, "parameters", "query"]>,
+    Url extends keyof ApiSchema["paths"],
+    Method extends keyof GetNested<ApiSchema["paths"], [Url]>,
+    Placeholder extends GetNested<ApiSchema["paths"], [Url, Method, "parameters", "path"]>,
+    QueryBase extends GetNested<ApiSchema["paths"], [Url, Method, "parameters", "query"]>,
     Query extends OmitOrNever<QueryBase, "request">,
-    Content extends GetNested<paths, [Url, Method, "requestBody", "content"]>,
+    Content extends GetNested<ApiSchema["paths"], [Url, Method, "requestBody", "content"]>,
     ContentType extends keyof NonNullable<Content>,
     ContentTypeOrNeverWhenJsonNotExists extends (
       [Content] extends [never]
@@ -457,7 +518,7 @@ export const useApiMutation
     BodyRaw extends GetNested<Content, [ContentType]>,
     Body extends (Method extends "get" ? Query : BodyRaw),
     ResponseMap extends ResponseMapFromSchemaRespopnses<
-      GetNested<paths, [Url, Method, "responses"]>
+      GetNested<ApiSchema["paths"], [Url, Method, "responses"]>
     >,
     Response extends ResponseMap["ok"],
     ResponseAs extends ResponseAsFrom<Response>,
@@ -487,7 +548,7 @@ export const useApiMutation
         ? undefined
         : { "Content-Type": contentTypeRaw };
     const responseAs = option?.responseAs ?? "json";
-    const { alertSnwError } = useSnwErrorHandler();
+    const { alertSnwError } = _useErrorHandler();
     const { mutate } = useSWRConfig();
     const { createFetch } = useCommonApiFetch(option ?? {});
 
