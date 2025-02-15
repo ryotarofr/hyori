@@ -3,10 +3,7 @@ import { BareFetcher, SWRConfiguration, useSWRConfig } from "swr/_internal";
 import useSWRMutation, { SWRMutationConfiguration } from "swr/mutation";
 
 import { environment } from "../_internal/environments/environment";
-import { useLoadingBoundary } from "../_internal/utils/context/LoadingBoundaryContext";
-// import { SnwErrorMapper, useSnwErrorHandler } from "@/fn/context/SnwErrorHandlerContext";
 import { getFileFromFetchResponse } from "../_internal/utils/getFileFromFetchResponse";
-// import { components, paths } from "../schema.gen";
 import { EmptyObject } from "../_internal/types/EmptyObject";
 import { Falsy } from "../_internal/types/Falsy";
 import { TemplateLiteralPlaceholder } from "../_internal/types/TemplateLiteralPlaceholder";
@@ -32,7 +29,7 @@ let globalApiSchema: ApiSchema = defaultApiSchema;
 /**
  * エラーメッセージの整形関数の型（ユーザ側で実装してください）
  */
-export type SnwErrorMapper = (error: any) => string;
+export type ErrorMapper = (error: any) => string;
 
 /**
  * ローディングインジケータ／エラーハンドリングの実装はユーザ側で用意してください。
@@ -40,11 +37,11 @@ export type SnwErrorMapper = (error: any) => string;
  */
 type LoadingBoundaryType = () => { track: <T>(promise: Promise<T>) => Promise<T> };
 type ErrorHandlerType = () => {
-  alertSnwError: (mapper?: SnwErrorMapper) => (error: unknown, config: { swrKey: unknown }) => void;
+  alertSnwError: (mapper?: ErrorMapper) => (error: unknown, config: { swrKey: unknown }) => void;
 };
 
 const defaultLoadingBoundary: LoadingBoundaryType = () => ({ track: (p) => p });
-const defaultErrorHandler: ErrorHandlerType = () => ({ alertSnwError: () => () => {} });
+const defaultErrorHandler: ErrorHandlerType = () => ({ alertSnwError: () => () => { } });
 
 let _useLoadingBoundary: LoadingBoundaryType = defaultLoadingBoundary;
 let _useErrorHandler: ErrorHandlerType = defaultErrorHandler;
@@ -86,24 +83,24 @@ type PickNullablePart<T> = Exclude<T, NonNullable<T>>;
  */
 type GetFieldFromNullable<From, Key> =
   Key extends keyof NonNullable<From>
-    ? From extends NonNullable<From>
-      ? From[Key]
-      : NonNullable<From>[Key] | PickNullablePart<From>
-    : never;
+  ? From extends NonNullable<From>
+  ? From[Key]
+  : NonNullable<From>[Key] | PickNullablePart<From>
+  : never;
 
 /**
  * ネストされたプロパティの型を取得する。
  */
 type GetNested<From, Keys> =
   [From] extends [never]
-    ? never
-    : Keys extends [infer Head, ...infer Tails]
-      ? Head extends keyof NonNullable<From>
-        ? Tails extends []
-          ? GetFieldFromNullable<From, Head>
-          : GetNested<GetFieldFromNullable<From, Head>, Tails>
-        : never
-      : never;
+  ? never
+  : Keys extends [infer Head, ...infer Tails]
+  ? Head extends keyof NonNullable<From>
+  ? Tails extends []
+  ? GetFieldFromNullable<From, Head>
+  : GetNested<GetFieldFromNullable<From, Head>, Tails>
+  : never
+  : never;
 
 /**
  * OpenAPI schema の responses セクションから、fetch の戻り値型を取得する。
@@ -111,22 +108,22 @@ type GetNested<From, Keys> =
 type ResponseStatusMapFromSchemaRespopnses<Responses> =
   {
     [StatusCode in keyof Responses]: StatusCode extends TemplateLiteralPlaceholder
-      ? {
-        __statuscodestr__: `${StatusCode}`;
-        // statusCode: StatusCode;
-        // description?: GetNested<Responses, [StatusCode, "description"]>;
-        // contentType: keyof GetNested<Responses, [StatusCode, "content"]>,
-      } & GetNested<
-        Responses,
-        [StatusCode, "content", keyof GetNested<Responses, [StatusCode, "content"]>]
-      >
-      : never
+    ? {
+      __statuscodestr__: `${StatusCode}`;
+      // statusCode: StatusCode;
+      // description?: GetNested<Responses, [StatusCode, "description"]>;
+      // contentType: keyof GetNested<Responses, [StatusCode, "content"]>,
+    } & GetNested<
+      Responses,
+      [StatusCode, "content", keyof GetNested<Responses, [StatusCode, "content"]>]
+    >
+    : never
   }[keyof Responses];
 
 type OmitSpecificStatusCodeStr<Pattern, Responses> = Omit<
   Extract<
     ResponseStatusMapFromSchemaRespopnses<Responses>,
-    {__statuscodestr__: Pattern}
+    { __statuscodestr__: Pattern }
   >,
   "__statuscodestr__"
 >;
@@ -203,7 +200,7 @@ type CommonApiFetchProps = {
 const useCommonApiFetch = ({
   showIndicator = true,
 }: CommonApiFetchProps) => {
-  const { track } = useLoadingBoundary();
+  const { track } = _useLoadingBoundary();
   return {
     createFetch: <T>(promise: Promise<T>) => {
       return showIndicator
@@ -231,10 +228,10 @@ const FalsyOrFn = {
 
 type If<Cond, T, Else = never> =
   Cond extends true
-    ? T
-    : [Cond] extends [never]
-      ? Else
-      : T;
+  ? T
+  : [Cond] extends [never]
+  ? Else
+  : T;
 
 type QueryArg<Query> =
   If<
@@ -266,11 +263,11 @@ const getPathFromTemplateAndPlaceholderMap = (
   placeholderMap: Record<string, unknown> | undefined,
 ) => {
   const path
-      = Object.entries(placeholderMap ?? {})
-        .reduce<string[]>((prev, [key, value]) => {
-          return prev.map((it) => it === `{${key}}` ? `${value}` : it);
-        }, pathTemplate.split("/"))
-        .join("/");
+    = Object.entries(placeholderMap ?? {})
+      .reduce<string[]>((prev, [key, value]) => {
+        return prev.map((it) => it === `{${key}}` ? `${value}` : it);
+      }, pathTemplate.split("/"))
+      .join("/");
   return path;
 };
 const getUrlFromPathAndQueryMap = (
@@ -292,25 +289,25 @@ const getDefinedQueriesMap = (_rawQueryMap?: OrFn<Record<string, unknown>>) => {
 };
 
 type OmitOrNever<T, Key extends PropertyKey> =
-      [T] extends [never]
-        ? never
-        : T extends undefined
-          ? T
-          : Omit<T, Key>;
+  [T] extends [never]
+  ? never
+  : T extends undefined
+  ? T
+  : Omit<T, Key>;
 
 type RequiredKeys<T> = { [K in keyof T]-?: EmptyObject extends Pick<T, K> ? never : K }[keyof T];
 type ToBeOptionalArgIfNotRequired<T> =
   [RequiredKeys<T>] extends [never]
-    ? [] | [T]
-    : [T];
+  ? [] | [T]
+  : [T];
 
 export type ApiQuery<
   Url extends keyof ApiSchema["paths"],
   Method extends keyof ApiSchema["paths"][Url]
 > = OmitOrNever<
-    GetNested<ApiSchema["paths"], [Url, Method, "parameters", "query"]>,
-    "request"
-  >;
+  GetNested<ApiSchema["paths"], [Url, Method, "parameters", "query"]>,
+  "request"
+>;
 
 export type UseApiKeys = {
   path: string;
@@ -325,10 +322,10 @@ const UseApiKeys = (() => {
 
 type ResponseAsFrom<T> =
   T extends File
-    ? "file"
-    : T extends Blob
-      ? "blob"
-      : "json";
+  ? "file"
+  : T extends Blob
+  ? "blob"
+  : "json";
 
 /**
  * APIとの通信用Hookを構築する関数。
@@ -343,7 +340,7 @@ type ResponseAsFrom<T> =
  * @param options.query - url末尾に queryParams として与える値を設定する。
  * @param options.responseAs - 必要なら、戻り値の変換処理を文字列にて指定する。デフォルトは "json"。
  * @param options.showIndicator - 通信中インジケーターの[表示/非表示]。デフォルトは`true`。
- * @param options.snwErrorMapper - 通信結果がエラーだった際に表示されるメッセージをコントロールする関数。
+ * @param options.errorMapper - 通信結果がエラーだった際に表示されるメッセージをコントロールする関数。
  * @returns SWRResponse
  *
  * @example
@@ -376,7 +373,7 @@ export const useApiQuery
         & ToRecord<"query", QueryArg<Query>>
         & ToRecord<"responseAs", ResponseAs extends "json" ? never : ResponseAs, ResponseAs>
         & CommonApiFetchProps
-        & { snwErrorMapper?: SnwErrorMapper }
+        & { errorMapper?: ErrorMapper }
       >
     )
   ) => {
@@ -427,12 +424,12 @@ export const useApiQuery
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       onError: (err, key) => {
-        const mapper = option?.snwErrorMapper;
+        const mapper = option?.errorMapper;
         const error = err as unknown as ApiTypes<"Error">;
         alertSnwError(mapper)(error, { swrKey: key });
       },
       ...option,
-    };    
+    };
 
     return useSWR<Response, Error, FalsyOrFn<UseApiKeys>>(keys, fetcher, swrConfig);;
   };
@@ -441,9 +438,9 @@ type QueryMethod = Extract<HttpMethod, "get">;
 type QueryPaths =
   {
     [
-    Key in keyof ApiSchema["paths"] as ApiSchema["paths"][Key] extends { [K in QueryMethod]?: unknown }
-      ? Key
-      : never
+    Key in keyof ApiSchema["paths"]as ApiSchema["paths"][Key] extends { [K in QueryMethod]?: unknown }
+    ? Key
+    : never
     ]: ApiSchema["paths"][Key]
   };
 
@@ -488,7 +485,7 @@ type QueryPaths =
  * @param options.contentType - 必要なら、HTTP-Header の ContentType を選択する。デフォルトは `application/json`。
  * @param options.responseAs - 必要なら、戻り値の変換処理を文字列にて指定する。デフォルトは "json"。
  * @param options.showIndicator - 通信中インジケーターの[表示/非表示]。デフォルトは`true`。
- * @param options.snwErrorMapper - 通信結果がエラーだった際に表示されるメッセージをコントロールする関数。
+ * @param options.errorMapper - 通信結果がエラーだった際に表示されるメッセージをコントロールする関数。
  * @returns SWRMutationHook
  *
  * @example
@@ -510,10 +507,10 @@ export const useApiMutation
     ContentType extends keyof NonNullable<Content>,
     ContentTypeOrNeverWhenJsonNotExists extends (
       [Content] extends [never]
-        ? never
-        : [GetNested<Content, ["application/json"]>] extends [never]
-          ? ContentType
-          : never
+      ? never
+      : [GetNested<Content, ["application/json"]>] extends [never]
+      ? ContentType
+      : never
     ),
     BodyRaw extends GetNested<Content, [ContentType]>,
     Body extends (Method extends "get" ? Query : BodyRaw),
@@ -534,7 +531,7 @@ export const useApiMutation
         & ToRecord<"query", QueryArg<(Method extends "get" ? never : Query)>>
         & ToRecord<"responseAs", ResponseAs extends "json" ? never : ResponseAs, ResponseAs>
         & CommonApiFetchProps
-        & { snwErrorMapper?: SnwErrorMapper }
+        & { errorMapper?: ErrorMapper }
       >
     )
   ) => {
@@ -638,7 +635,7 @@ export const useApiMutation
       fetcher,
       {
         onError: (err, key) => {
-          const mapper = option?.snwErrorMapper;
+          const mapper = option?.errorMapper;
           const error = err as unknown as ApiTypes<"Error">;
           alertSnwError(mapper)(error, {
             swrKey: key,
