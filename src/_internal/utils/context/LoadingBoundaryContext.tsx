@@ -1,4 +1,4 @@
-import {
+import React, {
   ReactNode,
   createContext,
   useContext,
@@ -8,7 +8,7 @@ import {
 
 import { Modal } from "../../components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
-import { getContextDefaultValueFactory } from "@/fn/getContextDefaultValueFactory";
+import { getContextDefaultValueFactory } from "../state/getContextDefaultValueFactory";
 
 const noImpl = getContextDefaultValueFactory("LoadingBoundaryProvider");
 

@@ -3,6 +3,7 @@ import { ComponentPropsWithoutRef, ElementType } from "react";
 import { useTabIndex } from "../context/TabIndexContext";
 import { getMappedObject } from "../getMappedObject";
 
+
 /**
  * tabIndexes オブジェクトを取得するための関数。
  *
