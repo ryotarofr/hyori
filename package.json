@@ -5,8 +5,18 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "hyori",
+    "react",
+    "swr",
+    "openapi"
+  ],
+  "repository": "ryotarofr/hyori",
+  "bugs": "https://github.com/ryotarofr/hyori/issues",
+  "author": "ryotarofr",
+  "contributors": [
+    "ryotarofr"
+  ],
   "license": "ISC",
   "description": "",
   "devDependencies": {
